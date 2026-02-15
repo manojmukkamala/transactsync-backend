@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 from email.utils import parseaddr
@@ -33,9 +34,19 @@ def prompt_builder(account_numbers: list[str], prompt_file: str) -> str:
     return tpl
 
 
-def _initialize_components(email_host: str, email_port: int, username: str, password: str, folder: str, model_host: str, model: str, api_host: str) -> tuple[APIClient, EmailClient, LLMClient]:
+def _initialize_components(
+    email_host: str,
+    email_port: int,
+    username: str,
+    password: str,
+    folder: str,
+    model_host: str,
+    model: str,
+    api_host: str,
+    api_headers: dict[str, str] | None = None,
+) -> tuple[APIClient, EmailClient, LLMClient]:
     """Initialize the API client, email handler, and LLM handler."""
-    api_handler = APIClient(api_host)
+    api_handler = APIClient(api_host, headers=api_headers)
     logger.info('API Client created.')
 
     email_handler = EmailClient(
@@ -47,14 +58,21 @@ def _initialize_components(email_host: str, email_port: int, username: str, pass
     return api_handler, email_handler, llm_handler
 
 
-def _process_email_loop(email_handler: EmailClient, api_handler: APIClient, transaction_filters: dict, llm_handler: LLMClient, prompt_file: str, folder: str) -> None:
+def _process_email_loop(
+    email_handler: EmailClient,
+    api_handler: APIClient,
+    transaction_filters: dict,
+    llm_handler: LLMClient,
+    prompt_file: str,
+    folder: str,
+) -> None:
     """Process emails one-by-one: fetch UID list, then fetch and process each UID sequentially."""
     while True:
         last_seen_uid = api_handler.get_last_seen_uid(folder)
         # ensure IMAP connection exists for UID retrieval
         email_handler.imap_bridge()
         uids = email_handler.get_email_uids(
-            str(last_seen_uid) if last_seen_uid else None
+            str(last_seen_uid) if last_seen_uid is not None else None
         )
         if not uids:
             logger.info('No new emails to process.')
@@ -67,10 +85,26 @@ def _process_email_loop(email_handler: EmailClient, api_handler: APIClient, tran
             sorted_uids = uids
 
         for uid in sorted_uids:
-            _process_single_email(uid, email_handler, api_handler, transaction_filters, llm_handler, prompt_file, folder)
+            _process_single_email(
+                uid,
+                email_handler,
+                api_handler,
+                transaction_filters,
+                llm_handler,
+                prompt_file,
+                folder,
+            )
 
 
-def _process_single_email(uid: int, email_handler: EmailClient, api: APIClient, transaction_filters: dict, transaction_handler: LLMClient, prompt_file: str, folder: str) -> None:
+def _process_single_email(
+    uid: str,
+    email_handler: EmailClient,
+    api: APIClient,
+    transaction_filters: dict,
+    transaction_handler: LLMClient,
+    prompt_file: str,
+    folder: str,
+) -> None:
     """Process a single email for transaction extraction."""
     e_mail = email_handler.get_email_by_uid(uid)
     if not e_mail:
@@ -160,6 +194,7 @@ def transactsync(
     model_host: str = 'http://localhost:11434',
     model: str = 'qwen3:8b',
     api_host: str = 'http://127.0.0.1:8000',
+    api_headers: dict[str, str] | None = None,
 ) -> None:
     """
     Main synchronization routine for fetching emails, extracting transactions, and storing them in the database.
@@ -186,11 +221,26 @@ def transactsync(
 
     # Initialize components
     api_handler, email_handler, llm_handler = _initialize_components(
-        email_host, email_port, username, password, folder, model_host, model, api_host
+        email_host,
+        email_port,
+        username,
+        password,
+        folder,
+        model_host,
+        model,
+        api_host,
+        api_headers,
     )
 
     # Process emails one-by-one: fetch UID list, then fetch and process each UID sequentially committing the UID after each
-    _process_email_loop(email_handler, api_handler, transaction_filters, llm_handler, prompt_file, folder)
+    _process_email_loop(
+        email_handler,
+        api_handler,
+        transaction_filters,
+        llm_handler,
+        prompt_file,
+        folder,
+    )
 
 
 if __name__ == '__main__':
@@ -253,6 +303,12 @@ if __name__ == '__main__':
         default=os.environ.get('API_HOST', 'http://127.0.0.1:8000'),
         required=False,
     )
+    parser.add_argument(
+        '--api_headers',
+        help='API Headers as JSON string (e.g., \'{"x-api-key": "super-secret"}\')',
+        default=os.environ.get('API_HEADERS'),
+        required=False,
+    )
     args = parser.parse_args()
 
     # Validate required arguments (env or CLI)
@@ -270,6 +326,14 @@ if __name__ == '__main__':
     if missing:
         parser.error('Missing required arguments: ' + ', '.join(missing))
 
+    # Parse API headers if provided
+    api_headers = None
+    if args.api_headers:
+        try:
+            api_headers = json.loads(args.api_headers)
+        except json.JSONDecodeError as e:
+            parser.error(f'Invalid JSON in api_headers: {e}')
+
     transactsync(
         args.email_host,
         args.email_port,
@@ -281,4 +345,5 @@ if __name__ == '__main__':
         model_host=args.model_host,
         model=args.model,
         api_host=args.api_host,
+        api_headers=api_headers,
     )

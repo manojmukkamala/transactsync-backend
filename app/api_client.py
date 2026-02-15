@@ -8,9 +8,12 @@ class APIClient:
         self,
         base_url: str = 'http://127.0.0.1:8000',
         session: requests.Session | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.base = base_url.rstrip('/')
         self.s = session or requests.Session()
+        if headers:
+            self.s.headers.update(headers)
 
     def get_last_seen_uid(self, folder: str) -> int | None:
         r = self.s.get(f'{self.base}/email_checkpoints/{folder}')

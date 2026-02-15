@@ -3,7 +3,6 @@ import imaplib
 import logging
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
-from typing import List, Dict, Optional
 
 from bs4 import BeautifulSoup
 
@@ -43,7 +42,7 @@ class EmailClient:
             raise RuntimeError(error_msg) from e
         return self.imapb
 
-    def get_email_uids(self, last_seen_uid: Optional[str] = None) -> List[str]:
+    def get_email_uids(self, last_seen_uid: str | None = None) -> list[str]:
         """
         Retrieve UIDs of emails in a folder. If last_seen_uid is given, only fetch newer ones.
 
@@ -77,18 +76,41 @@ class EmailClient:
             # Search from UID+1 to newest
             criteria = f'UID {int(last_seen_uid) + 1}:*' if last_seen_uid else 'ALL'
 
-            status, messages = self.imapb.uid('search', 'UTF-8', criteria)
+            status, messages = self.imapb.uid('search', criteria)
             if status != 'OK':
                 _raise_search_error()
 
             # Ensure we return a list of strings
             uids = messages[0].split()
-            return [uid.decode('utf-8') if isinstance(uid, bytes) else uid for uid in uids]
+            return [
+                uid.decode('utf-8') if isinstance(uid, bytes) else uid for uid in uids
+            ]
         except Exception as e:
             error_msg = f'Failed to retrieve email UIDs: {e!s}'
             raise RuntimeError(error_msg) from e
 
     # Note: `get_emails` removed — use `get_email_uids` + `get_email_by_uid` for sequential processing
+
+    def _extract_text_plain_body(self, part: email.message.Message) -> str:
+        """Extract text/plain body from email part."""
+        payload = part.get_payload(decode=True)
+        if isinstance(payload, bytes):
+            return payload.decode(errors='ignore')
+        elif isinstance(payload, str):
+            return payload
+        return ''
+
+    def _extract_html_body(self, part: email.message.Message) -> str:
+        """Extract and parse HTML body from email part."""
+        payload = part.get_payload(decode=True)
+        if isinstance(payload, bytes):
+            html = payload.decode(errors='ignore')
+        elif isinstance(payload, str):
+            html = payload
+        else:
+            return ''
+        soup = BeautifulSoup(html, 'html.parser')
+        return soup.get_text()
 
     def _extract_email_body(self, msg: email.message.Message) -> str:
         """Extract body from email message."""
@@ -97,31 +119,15 @@ class EmailClient:
             for part in msg.walk():
                 content_type = part.get_content_type()
                 if content_type == 'text/plain':
-                    payload = part.get_payload(decode=True)
-                    if isinstance(payload, bytes):
-                        body = payload.decode(errors='ignore')
-                    elif isinstance(payload, str):
-                        body = payload
+                    body = self._extract_text_plain_body(part)
                     break
                 elif content_type == 'text/html':
-                    payload = part.get_payload(decode=True)
-                    if isinstance(payload, bytes):
-                        html = payload.decode(errors='ignore')
-                    elif isinstance(payload, str):
-                        html = payload
-                    soup = BeautifulSoup(html, 'html.parser')
-                    body = soup.get_text()
+                    body = self._extract_html_body(part)
                     break
         else:
             content_type = msg.get_content_type()
             if content_type == 'text/html':
-                payload = msg.get_payload(decode=True)
-                if isinstance(payload, bytes):
-                    html = payload.decode(errors='ignore')
-                elif isinstance(payload, str):
-                    html = payload
-                soup = BeautifulSoup(html, 'html.parser')
-                body = soup.get_text()
+                body = self._extract_html_body(msg)
             else:
                 payload = msg.get_payload(decode=True)
                 if isinstance(payload, bytes):
@@ -138,7 +144,7 @@ class EmailClient:
             parsed_date = parsed_date.replace(tzinfo=None)
         return parsed_date.isoformat() if parsed_date else raw_date
 
-    def get_email_by_uid(self, uid: str) -> Optional[Dict[str, str]]:
+    def get_email_by_uid(self, uid: str) -> dict[str, str] | None:
         """
         Retrieve a single email by UID.
 
