@@ -19,7 +19,7 @@ dependencies = [
     "greenlet>=3.3.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "ruff>=0.14.14",
     "mypy>=1.19.1",
@@ -78,6 +78,8 @@ select = [
 ignore = [
     "E501",  # line too long, handled by formatter
     "PLR",   # design related pylint rules
+    "Q000",  # Single quotes, handled by formatter
+    "Q003",  # Triple quotes, handled by formatter
 ]
 
 [tool.ruff.format]
