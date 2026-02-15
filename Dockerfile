@@ -17,6 +17,7 @@ RUN uv pip install -r pyproject.toml --system
 
 # Copy only necessary source and config files
 COPY app/ ./app/
+COPY main.py ./main.py
 
 # Set entrypoint (use exec form for proper signal handling)
-CMD ["uv", "run", "src/main.py"]
+CMD ["uv", "run", "/workspace/main.py", "--transaction_rules", "/rules/transaction_rules.yaml", "--prompt_file", "/rules/prompt.txt"]
