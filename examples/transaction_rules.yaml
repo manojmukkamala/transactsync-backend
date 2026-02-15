@@ -1,0 +1,128 @@
+senders:
+  # chase rules
+  - from_address: "no.reply.alerts@chase.com"
+    rules:
+      - subject: "You made a .* transaction with .*"
+        pattern: custom
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true
+      - subject: "Your .* direct deposit posted to account ending in .*"
+        pattern: custom      
+        category: "Bank Account Credit"      
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true  
+      - subject: "You received money with Zelle®"
+        pattern: exact      
+        category: "Bank Account Credit"      
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true               
+      - subject: "You sent .* from account ending in .*"
+        pattern: custom      
+        category: "Bank Account Debit"      
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true
+      - subject: "Your bill payment of .* was made from account ending in .*"
+        pattern: custom
+        category: "Bank Account Debit"              
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true        
+  # discover rules
+  - from_address: "discover@services.discover.com"
+    rules:
+      - subject: "Transaction Alert"
+        pattern: exact      
+        category: "Credit Card Transaction"        
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true
+      - subject: "Alert: A recent credit from your account"
+        pattern: exact
+        category: "Bank Account Credit"      
+        account_numbers:
+          - '1111'
+          - '2222'         
+        enabled: true
+      - subject: "Alert: A recent debit from your account"
+        pattern: exact
+        category: "Bank Account Debit"      
+        account_numbers:
+          - '1111'
+          - '2222'         
+        enabled: true        
+  # wells_fargo rules
+  - from_address: "alerts@notify.wellsfargo.com"
+    rules:
+      - subject: "You made a credit card purchase of $"
+        pattern: startswith
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true
+  # capital_one rules
+  - from_address: "capitalone@notification.capitalone.com"
+    rules:
+      - subject: "A new transaction was charged to your account"
+        pattern: exact
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true        
+  # amex rules
+  - from_address: "AmericanExpress@welcome.americanexpress.com"
+    rules:
+      - subject: "Large Purchase Approved"
+        pattern: exact
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true        
+  # citi rules
+  - from_address: "alerts@info6.citi.com"
+    rules:
+      - subject: "A .* transaction was made on your Costco Anywhere account"
+        pattern: custom
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true          
+  # bofa rules
+  - from_address: "onlinebanking@ealerts.bankofamerica.com"
+    rules:
+      - subject: "Credit card not present during this transaction"
+        pattern: exact
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true   
+      - subject: "Credit card transaction exceeds alert limit you set"
+        pattern: exact
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true    
+      - subject: "We've credited your account"
+        pattern: exact
+        category: "Credit Card Transaction"
+        account_numbers:
+          - '1111'
+          - '2222'
+        enabled: true
+  

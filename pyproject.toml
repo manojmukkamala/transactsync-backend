@@ -17,6 +17,7 @@ dependencies = [
     "sqlmodel>=0.0.32",
     "asyncpg>=0.31.0",
     "greenlet>=3.3.1",
+    "types-requests>=2.32.4.20260107",
 ]
 
 [dependency-groups]
