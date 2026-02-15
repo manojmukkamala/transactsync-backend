@@ -75,12 +75,14 @@ class APIClient:
     def save_transaction(
         self,
         e_mail: dict[str, Any],
+        load_by: str,
         llm_reasoning: str,
         llm_prediction: dict[str, Any],
         account_id: int,
         cycle_id: int | None = None,
     ) -> dict[str, Any]:
         payload = {
+            'load_by': load_by,
             'transaction_date': e_mail.get('email_date'),
             'transaction_amount': llm_prediction.get('transaction_amount'),
             'merchant': llm_prediction.get('merchant'),

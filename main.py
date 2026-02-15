@@ -170,6 +170,7 @@ def _process_single_email(
             return
         api.save_transaction(
             e_mail=e_mail,
+            load_by='agent',
             llm_reasoning=llm_reasoning,
             llm_prediction=llm_prediction,
             account_id=account_id,
