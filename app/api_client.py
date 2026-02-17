@@ -95,6 +95,8 @@ class APIClient:
             'llm_reasoning': llm_reasoning,
             'comment': llm_prediction.get('comment'),
             'cycle_id': cycle_id,
+            'is_deleted': False,
+            'is_budgeted': False
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         r = self.s.post(f'{self.base}/transactions', json=payload)
