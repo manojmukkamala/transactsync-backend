@@ -1,3 +1,4 @@
+import logging
 from typing import Any, cast
 
 import requests
@@ -6,10 +7,12 @@ import requests
 class APIClient:
     def __init__(
         self,
+        logger: logging.Logger,
         base_url: str = 'http://127.0.0.1:8000',
         session: requests.Session | None = None,
         headers: dict[str, str] | None = None,
     ) -> None:
+        self.logger = logger
         self.base = base_url.rstrip('/')
         self.s = session or requests.Session()
         if headers:
@@ -74,30 +77,31 @@ class APIClient:
 
     def save_transaction(
         self,
-        e_mail: dict[str, Any],
+        e_mail: dict[str, Any] | None,
         load_by: str,
         llm_reasoning: str,
         llm_prediction: dict[str, Any],
         account_id: int,
         cycle_id: int | None = None,
     ) -> dict[str, Any]:
-        payload = {
-            'load_by': load_by,
-            'transaction_date': e_mail.get('email_date'),
-            'transaction_amount': llm_prediction.get('transaction_amount'),
-            'merchant': llm_prediction.get('merchant'),
-            'account_id': account_id,
-            'from_address': e_mail.get('from_address'),
-            'to_address': e_mail.get('to_address'),
-            'email_uid': e_mail.get('uid'),
-            'email_date': e_mail.get('email_date'),
-            'transaction_type': llm_prediction.get('transaction_type'),
-            'llm_reasoning': llm_reasoning,
-            'comment': llm_prediction.get('comment'),
-            'cycle_id': cycle_id,
-            'is_deleted': False,
-            'is_budgeted': False
-        }
+        if email is not None:
+            payload = {
+                'load_by': load_by,
+                'transaction_date': e_mail.get('email_date'),
+                'transaction_amount': llm_prediction.get('transaction_amount'),
+                'merchant': llm_prediction.get('merchant'),
+                'account_id': account_id,
+                'from_address': e_mail.get('from_address'),
+                'to_address': e_mail.get('to_address'),
+                'email_uid': e_mail.get('uid'),
+                'email_date': e_mail.get('email_date'),
+                'transaction_type': llm_prediction.get('transaction_type'),
+                'llm_reasoning': llm_reasoning,
+                'comment': llm_prediction.get('comment'),
+                'cycle_id': cycle_id,
+                'is_deleted': False,
+                'is_budgeted': False,
+            }          
         payload = {k: v for k, v in payload.items() if v is not None}
         r = self.s.post(f'{self.base}/transactions', json=payload)
         r.raise_for_status()

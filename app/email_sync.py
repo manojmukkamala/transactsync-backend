@@ -1,17 +1,13 @@
+import argparse
 import json
 import logging
 import os
 from email.utils import parseaddr
 
-from app.api_client import APIClient
-from app.email_client import EmailClient
-from app.llm_client import LLMClient
-from app.rule_parser import load_rules, match_email_to_rule
-
-logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from app.utils.api_client import APIClient
+from app.utils.email_client import EmailClient
+from app.utils.llm_client import LLMClient
+from app.utils.rule_parser import load_rules, match_email_to_rule
 
 
 def prompt_builder(account_numbers: list[str], prompt_file: str) -> str:
@@ -45,7 +41,7 @@ def _initialize_components(
     api_headers: dict[str, str] | None = None,
 ) -> tuple[APIClient, EmailClient, LLMClient]:
     """Initialize the API client, email handler, and LLM handler."""
-    api_handler = APIClient(api_host, headers=api_headers)
+    api_handler = APIClient(logger, api_host, headers=api_headers)
     logger.info('API Client created.')
 
     email_handler = EmailClient(
@@ -124,8 +120,19 @@ def _process_single_email(
 
     account_numbers = matched_rule.get('account_numbers', [])
     llm_prompt_for_email = prompt_builder(account_numbers, prompt_file)
-    llm_reasoning, llm_prediction = transaction_handler.get_transaction(
-        e_mail, llm_prompt_for_email
+
+    llm_prompt_for_email = (
+        llm_prompt_for_email
+        + f"""
+        \n from_address: {e_mail['from_address']}
+        \n date: {e_mail['email_date']}
+        \n subject: {e_mail['subject']}
+        \n body: \n{e_mail['body'].strip()}
+        """.strip()
+    )    
+
+    llm_reasoning, llm_prediction = transaction_handler.get_llm_response(
+        llm_prompt_for_email
     )
     _, e_mail['from_address'] = parseaddr(e_mail['from_address'])
     _, e_mail['to_address'] = parseaddr(e_mail['to_address'])
@@ -183,18 +190,19 @@ def _process_single_email(
     api.set_last_seen_uid(folder, int(uid))
 
 
-def transactsync(
+def email_sync(
+    logger: logging.Logger,
     email_host: str,
     email_port: int,
     username: str,
     password: str,
     folder: str,
+    model_host: str,
+    model: str,
+    api_host: str,
+    api_headers: dict[str, str] | None,
     transaction_rules: str,
     prompt_file: str,
-    model_host: str = 'http://localhost:11434',
-    model: str = 'qwen3:8b',
-    api_host: str = 'http://127.0.0.1:8000',
-    api_headers: dict[str, str] | None = None,
 ) -> None:
     """
     Main synchronization routine for fetching emails, extracting transactions, and storing them in the database.
@@ -241,7 +249,6 @@ def transactsync(
         prompt_file,
         folder,
     )
-
 
 
 if __name__ == '__main__':
@@ -310,7 +317,6 @@ if __name__ == '__main__':
         default=os.environ.get('API_HEADERS'),
         required=False,
     )
-
     args = parser.parse_args()
 
     # Validate required arguments (env or CLI)
@@ -331,22 +337,28 @@ if __name__ == '__main__':
     # Parse API headers if provided
     api_headers = None
     if args.api_headers:
-
         try:
             api_headers = json.loads(args.api_headers)
         except json.JSONDecodeError as e:
             parser.error(f'Invalid JSON in api_headers: {e}')
 
-    transactsync(
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    )
+    logger = logging.getLogger(__name__)
+
+    email_sync(
+        logger,
         args.email_host,
         args.email_port,
         args.username,
         args.password,
         args.folder,
+        args.model_host,
+        args.model,
+        args.api_host,
+        api_headers,
         args.transaction_rules,
         args.prompt_file,
-        model_host=args.model_host,
-        model=args.model,
-        api_host=args.api_host,
-        api_headers=api_headers,
     )
