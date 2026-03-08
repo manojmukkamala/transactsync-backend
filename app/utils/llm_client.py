@@ -23,11 +23,7 @@ class LLMClient:
             self.llm_bridge.pull(self.model)
         self.logger.info('Using model: %s', self.model)
 
-    def get_llm_response(
-        self, 
-        llm_prompt: str,
-        parse_model_output: bool = True
-    ) -> tuple[str, dict]:
+    def get_llm_response(self, llm_prompt: str) -> tuple[str, dict]:
         """
         Extract transaction details from an email using a language model.
 
@@ -41,20 +37,16 @@ class LLMClient:
             ValueError: If no JSON is found or JSON parsing fails.
         """
 
-        llm_response = self.llm_bridge.generate(model=self.model, prompt=llm_prompt).response
-
-        if not parse_model_output: 
-            return llm_response
+        llm_response = self.llm_bridge.generate(
+            model=self.model, prompt=llm_prompt
+        ).response
 
         llm_reasoning, llm_prediction = self.parse_model_output(llm_response)
 
         return llm_reasoning, llm_prediction
 
-
-    @staticmethod
     def parse_model_output(
-        raw_output: str, 
-        schema_class: type | None = None
+        self, raw_output: str, schema_class: type | None = None
     ) -> tuple[str, dict]:
         """
         Parse the raw output from a language model to extract reasoning text and structured data.
@@ -69,23 +61,15 @@ class LLMClient:
         Raises:
             ValueError: If no JSON is found or JSON parsing fails.
         """
-        # # Match from the first '{' to the last '}' (greedy) — fallback if not recursive
-        # json_match = re.search(r'\{(?:.|\n)*?\}', raw_output)
 
-        # if not json_match:
-        #     msg = 'No JSON object found in model output.'
-        #     raise ValueError(msg)
-
-        # json_str = json_match.group(0)
-        # reasoning_text = raw_output[: json_match.start()].strip()
-
-        pattern = r"```json\s*(.*?)\s*```"
+        pattern = r'```json\s*(.*?)\s*```'
         match = re.search(pattern, raw_output, re.DOTALL)
-        
-        if not match:
-            raise ValueError("No JSON code block found in markdown") 
 
-        json_str = match.group(1)                 
+        if not match:
+            self.logger.error('No JSON code block found in markdown')
+            raise ValueError
+
+        json_str = match.group(1)
 
         try:
             parsed = json.loads(json_str)

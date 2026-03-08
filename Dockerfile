@@ -20,4 +20,4 @@ COPY app/ ./app/
 COPY main.py ./main.py
 
 # Set entrypoint (use exec form for proper signal handling)
-CMD ["uv", "run", "/workspace/main.py", "--transaction_rules", "/rules/transaction_rules.yaml", "--prompt_file", "/rules/prompt.txt"]
+CMD ["uv", "run", "/workspace/main.py", "--source", "email"]
