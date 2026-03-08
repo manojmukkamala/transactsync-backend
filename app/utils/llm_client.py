@@ -23,15 +23,12 @@ class LLMClient:
             self.llm_bridge.pull(self.model)
         self.logger.info('Using model: %s', self.model)
 
-    def get_transaction(
-        self, e_mail: dict, llm_prompt: str | None = None
-    ) -> tuple[str, dict]:
+    def get_llm_response(self, llm_prompt: str) -> tuple[str, dict]:
         """
         Extract transaction details from an email using a language model.
 
         Args:
-            e_mail (dict): A dictionary containing the email's subject, date, sender, recipient, and body.
-            llm_prompt (Optional[str]): An optional custom prompt to use with the language model.
+            llm_prompt str: An optional custom prompt to use with the language model.
 
         Returns:
             Tuple[str, dict]: A tuple containing the reasoning text and the parsed JSON object.
@@ -39,36 +36,6 @@ class LLMClient:
         Raises:
             ValueError: If no JSON is found or JSON parsing fails.
         """
-
-        if llm_prompt is None:
-            self.logger.info('Using default prompt')
-            # These variables should be defined elsewhere in the codebase
-            # For now, we'll define them here to avoid undefined name errors
-
-            llm_prompt = """
-            You are given an email body and you must extract transaction information when the email represents a transaction.
-
-            Determine if the email represents a transaction. If so, extract and return JSON with these keys (no extras):
-            - account_number (string - include only the last 4 digits)
-            - transaction_amount (float)
-            - merchant (string, if available)
-            - transaction_type (string: 'debit'|'credit')
-            - transaction_flag (boolean)
-
-            If the email is not a transaction, return:
-            {"transaction_flag": false}
-
-            Do not include explanatory text in your response — only return valid JSON matching the schema above.
-            """
-        llm_prompt = (
-            llm_prompt
-            + f"""
-            \n from_address: {e_mail['from_address']}
-            \n date: {e_mail['email_date']}
-            \n subject: {e_mail['subject']}
-            \n body: \n{e_mail['body'].strip()}
-            """.strip()
-        )
 
         llm_response = self.llm_bridge.generate(
             model=self.model, prompt=llm_prompt
@@ -78,9 +45,8 @@ class LLMClient:
 
         return llm_reasoning, llm_prediction
 
-    @staticmethod
     def parse_model_output(
-        raw_output: str, schema_class: type | None = None
+        self, raw_output: str, schema_class: type | None = None
     ) -> tuple[str, dict]:
         """
         Parse the raw output from a language model to extract reasoning text and structured data.
@@ -95,15 +61,15 @@ class LLMClient:
         Raises:
             ValueError: If no JSON is found or JSON parsing fails.
         """
-        # Match from the first '{' to the last '}' (greedy) — fallback if not recursive
-        json_match = re.search(r'\{(?:.|\n)*?\}', raw_output)
 
-        if not json_match:
-            msg = 'No JSON object found in model output.'
-            raise ValueError(msg)
+        pattern = r'```json\s*(.*?)\s*```'
+        match = re.search(pattern, raw_output, re.DOTALL)
 
-        json_str = json_match.group(0)
-        reasoning_text = raw_output[: json_match.start()].strip()
+        if not match:
+            self.logger.error('No JSON code block found in markdown')
+            raise ValueError
+
+        json_str = match.group(1)
 
         try:
             parsed = json.loads(json_str)
@@ -112,4 +78,4 @@ class LLMClient:
         except json.JSONDecodeError as e:
             msg = f'Failed to parse JSON: {e}\nExtracted: {json_str}'
             raise ValueError(msg) from e
-        return reasoning_text, parsed
+        return raw_output, parsed
