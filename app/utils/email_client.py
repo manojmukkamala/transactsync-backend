@@ -89,8 +89,6 @@ class EmailClient:
             error_msg = f'Failed to retrieve email UIDs: {e!s}'
             raise RuntimeError(error_msg) from e
 
-    # Note: `get_emails` removed — use `get_email_uids` + `get_email_by_uid` for sequential processing
-
     def _extract_text_plain_body(self, part: email.message.Message) -> str:
         """Extract text/plain body from email part."""
         payload = part.get_payload(decode=True)
