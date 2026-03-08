@@ -6,10 +6,11 @@ import os
 from dotenv import load_dotenv
 
 from app.email_sync import email_sync
+from app.statement_sync import statement_sync
 
 if __name__ == '__main__':
     load_dotenv()
-    
+
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=(argparse.RawDescriptionHelpFormatter)
     )
@@ -52,5 +53,16 @@ if __name__ == '__main__':
             transaction_rules=os.environ.get(
                 'TRANSACTION_RULES', '/rules/transaction_rules.yaml'
             ),
+            prompt_file=os.environ.get('PROMPT_FILE', '/rules/prompt.txt'),
+        )
+    elif args.source == 'statement':
+        statement_sync(
+            logger=logger,
+            statement_file=os.environ.get('STATEMENT_FILE', None),
+            statement_folder=os.environ.get('STATEMENT_FOLDER', '/data/statements'),
+            model_host=os.environ.get('MODEL_HOST', 'http://localhost:11434'),
+            model=os.environ.get('MODEL_NAME', 'qwen3:8b'),
+            api_host=os.environ.get('API_HOST', 'http://127.0.0.1:8000'),
+            api_headers=api_headers,
             prompt_file=os.environ.get('PROMPT_FILE', '/rules/prompt.txt'),
         )
