@@ -1,0 +1,13 @@
+You are given a financial account statement that represents a credit card or bank account and you must extract transactions from the statement.
+
+Find and fetch the all the transactions (purchases, payments and fees) from the statement and create a list of JSON payloads. 
+For each transaction, create a JSON with these keys (no extras):
+- account_number (string - include only the last 4 digits)
+- transaction_amount (float, positive)
+- merchant (string, if available. 'Payment' for credit card payments)
+- transaction_type (string: 'debit'|'credit')
+- transaction_date (yyyy-mm-dd)
+- category (Payment - if credit card payment, otherwise make a best guess)
+
+Do not include explanatory text in your response — return a list of JSON objects matching the schema above in markdown format "```json [{}, {}...] ```".
+If the statement does not contain any transactions, return empty list.

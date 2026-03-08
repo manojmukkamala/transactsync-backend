@@ -32,6 +32,20 @@ class APIClient:
         r.raise_for_status()
         return cast('dict[str, Any]', r.json())
 
+    def get_latest_checkpoint(self, identifier: str) -> str | None:
+        r = self.s.get(f'{self.base}/checkpoints/{identifier}')
+        if r.status_code == 200:
+            response_json = cast('dict[str, Any]', r.json())
+            return response_json.get('checkpoint')
+        return None
+
+    def set_latest_checkpoint(self, identifier: str, checkpoint: str) -> dict[str, Any]:
+        r = self.s.put(
+            f'{self.base}/checkpoints/{identifier}', json={'checkpoint': checkpoint}
+        )
+        r.raise_for_status()
+        return cast('dict[str, Any]', r.json())
+
     def get_account_ids_dict(self) -> dict[tuple, int]:
         r = self.s.get(f'{self.base}/accounts')
         if r.status_code == 200:
@@ -85,23 +99,35 @@ class APIClient:
         cycle_id: int | None = None,
     ) -> dict[str, Any]:
         if e_mail is not None:
-            payload = {
-                'load_by': load_by,
-                'transaction_date': e_mail.get('email_date'),
-                'transaction_amount': llm_prediction.get('transaction_amount'),
-                'merchant': llm_prediction.get('merchant'),
-                'account_id': account_id,
-                'from_address': e_mail.get('from_address'),
-                'to_address': e_mail.get('to_address'),
-                'email_uid': e_mail.get('uid'),
-                'email_date': e_mail.get('email_date'),
-                'transaction_type': llm_prediction.get('transaction_type'),
-                'llm_reasoning': llm_reasoning,
-                'comment': llm_prediction.get('comment'),
-                'cycle_id': cycle_id,
-                'is_deleted': False,
-                'is_budgeted': False,
-            }
+            email_uid = e_mail.get('uid')
+            email_date = e_mail.get('email_date')
+            from_address = e_mail.get('from_address')
+            to_address = e_mail.get('to_address')
+            transaction_date = e_mail.get('email_date')
+        else:
+            email_uid = None
+            email_date = None
+            from_address = None
+            to_address = None
+            transaction_date = llm_prediction.get('transaction_date')
+
+        payload = {
+            'load_by': load_by,
+            'transaction_date': transaction_date,
+            'transaction_amount': llm_prediction.get('transaction_amount'),
+            'merchant': llm_prediction.get('merchant'),
+            'account_id': account_id,
+            'from_address': from_address,
+            'to_address': to_address,
+            'email_uid': email_uid,
+            'email_date': email_date,
+            'transaction_type': llm_prediction.get('transaction_type'),
+            'llm_reasoning': llm_reasoning,
+            'comment': llm_prediction.get('comment'),
+            'cycle_id': cycle_id,
+            'is_deleted': False,
+            'is_budgeted': False,
+        }
         payload = {k: v for k, v in payload.items() if v is not None}
         r = self.s.post(f'{self.base}/transactions', json=payload)
         r.raise_for_status()

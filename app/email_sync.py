@@ -42,7 +42,7 @@ def _initialize_components(
     api_headers: dict[str, str] | None = None,
 ) -> tuple[APIClient, EmailClient, LLMClient]:
     """Initialize the API client, email handler, and LLM handler."""
-    
+
     logger.info('API Client created.')
 
     api_handler = APIClient(logger, api_host, headers=api_headers)
@@ -92,7 +92,7 @@ def _process_email_loop(
                 transaction_filters,
                 llm_handler,
                 prompt_file,
-                folder
+                folder,
             )
 
 
@@ -180,6 +180,7 @@ def _process_single_email(
             )
             api.set_last_seen_uid(folder, int(uid))
             return
+        # in future, save the email to db and getch the email_id for the email. store the email_id along with transaction.
         api.save_transaction(
             e_mail=e_mail,
             load_by='agent',
