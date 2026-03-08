@@ -3,9 +3,13 @@ import json
 import logging
 import os
 
+from dotenv import load_dotenv
+
 from app.email_sync import email_sync
 
 if __name__ == '__main__':
+    load_dotenv()
+    
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=(argparse.RawDescriptionHelpFormatter)
     )

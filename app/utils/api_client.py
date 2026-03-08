@@ -84,7 +84,7 @@ class APIClient:
         account_id: int,
         cycle_id: int | None = None,
     ) -> dict[str, Any]:
-        if email is not None:
+        if e_mail is not None:
             payload = {
                 'load_by': load_by,
                 'transaction_date': e_mail.get('email_date'),
@@ -101,7 +101,7 @@ class APIClient:
                 'cycle_id': cycle_id,
                 'is_deleted': False,
                 'is_budgeted': False,
-            }          
+            }
         payload = {k: v for k, v in payload.items() if v is not None}
         r = self.s.post(f'{self.base}/transactions', json=payload)
         r.raise_for_status()
