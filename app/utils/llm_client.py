@@ -24,7 +24,7 @@ class LLMClient:
         self.logger.info('Using model: %s', self.model)
 
     def get_llm_response(
-        self, 
+        self,
         llm_prompt: str,
         parse_model_output: bool = True
     ) -> tuple[str, dict]:
@@ -43,7 +43,7 @@ class LLMClient:
 
         llm_response = self.llm_bridge.generate(model=self.model, prompt=llm_prompt).response
 
-        if not parse_model_output: 
+        if not parse_model_output:
             return llm_response
 
         llm_reasoning, llm_prediction = self.parse_model_output(llm_response)
@@ -53,7 +53,7 @@ class LLMClient:
 
     @staticmethod
     def parse_model_output(
-        raw_output: str, 
+        raw_output: str,
         schema_class: type | None = None
     ) -> tuple[str, dict]:
         """
@@ -81,11 +81,11 @@ class LLMClient:
 
         pattern = r"```json\s*(.*?)\s*```"
         match = re.search(pattern, raw_output, re.DOTALL)
-        
-        if not match:
-            raise ValueError("No JSON code block found in markdown") 
 
-        json_str = match.group(1)                 
+        if not match:
+            raise ValueError("No JSON code block found in markdown")
+
+        json_str = match.group(1)
 
         try:
             parsed = json.loads(json_str)

@@ -129,7 +129,7 @@ def _process_single_email(
         \n subject: {e_mail['subject']}
         \n body: \n{e_mail['body'].strip()}
         """.strip()
-    )    
+    )
 
     llm_reasoning, llm_prediction = transaction_handler.get_llm_response(
         llm_prompt_for_email
