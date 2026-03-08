@@ -30,6 +30,7 @@ def prompt_builder(account_numbers: list[str], prompt_file: str) -> str:
 
 
 def _initialize_components(
+    logger: logging.Logger,
     email_host: str,
     email_port: int,
     username: str,
@@ -41,8 +42,10 @@ def _initialize_components(
     api_headers: dict[str, str] | None = None,
 ) -> tuple[APIClient, EmailClient, LLMClient]:
     """Initialize the API client, email handler, and LLM handler."""
-    api_handler = APIClient(logger, api_host, headers=api_headers)
+    
     logger.info('API Client created.')
+
+    api_handler = APIClient(logger, api_host, headers=api_headers)
 
     email_handler = EmailClient(
         logger, email_host, email_port, username, password, folder
@@ -54,6 +57,7 @@ def _initialize_components(
 
 
 def _process_email_loop(
+    logger: logging.Logger,
     email_handler: EmailClient,
     api_handler: APIClient,
     transaction_filters: dict,
@@ -81,17 +85,19 @@ def _process_email_loop(
 
         for uid in sorted_uids:
             _process_single_email(
+                logger,
                 uid,
                 email_handler,
                 api_handler,
                 transaction_filters,
                 llm_handler,
                 prompt_file,
-                folder,
+                folder
             )
 
 
 def _process_single_email(
+    logger: logging.Logger,
     uid: str,
     email_handler: EmailClient,
     api: APIClient,
@@ -229,6 +235,7 @@ def email_sync(
 
     # Initialize components
     api_handler, email_handler, llm_handler = _initialize_components(
+        logger,
         email_host,
         email_port,
         username,
@@ -242,6 +249,7 @@ def email_sync(
 
     # Process emails one-by-one: fetch UID list, then fetch and process each UID sequentially committing the UID after each
     _process_email_loop(
+        logger,
         email_handler,
         api_handler,
         transaction_filters,
