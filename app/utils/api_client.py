@@ -32,6 +32,20 @@ class APIClient:
         r.raise_for_status()
         return cast('dict[str, Any]', r.json())
 
+def get_latest_checkpoint(self, identifier: str) -> str | None:
+    r = self.s.get(f'{self.base}/checkpoints/{identifier}')
+    if r.status_code == 200:
+        response_json = cast('dict[str, Any]', r.json())
+        return response_json.get('checkpoint')
+    return None
+
+def set_latest_checkpoint(self, identifier: str, checkpoint: str) -> dict[str, Any]:
+    r = self.s.put(
+        f'{self.base}/checkpoints/{identifier}', json={'checkpoint': checkpoint}
+    )
+    r.raise_for_status()
+    return cast('dict[str, Any]', r.json())            
+
     def get_account_ids_dict(self) -> dict[tuple, int]:
         r = self.s.get(f'{self.base}/accounts')
         if r.status_code == 200:
