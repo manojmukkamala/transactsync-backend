@@ -12,4 +12,4 @@ Determine if the email represents a transaction. If so, extract and return JSON 
 If the email is not a transaction, return:
 {"transaction_flag": false}
 
-Do not include explanatory text in your response — only return valid JSON matching the schema above.
+Do not include explanatory text in your response — only return valid JSON matching the schema above in markdown format "```json {} ```".
