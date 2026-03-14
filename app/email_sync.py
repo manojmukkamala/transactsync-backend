@@ -29,6 +29,20 @@ def prompt_builder(account_numbers: list[str], prompt_file: str) -> str:
     return tpl
 
 
+def get_email_id(api_handler: APIClient, email: dict[str, str], folder: str) -> int:
+    try:
+        email_id = api_handler.get_email_id_by_email(email, folder)
+        if email_id is None:
+            response = api_handler.set_email_id_by_email(email, folder)
+            email_id = response['email_id']
+    except KeyError as kerr:
+        k = 'email_id'
+        raise KeyError(k) from kerr
+    except Exception:
+        raise
+    return email_id
+
+
 def _initialize_components(
     logger: logging.Logger,
     email_host: str,
@@ -100,7 +114,7 @@ def _process_single_email(
     logger: logging.Logger,
     uid: str,
     email_handler: EmailClient,
-    api: APIClient,
+    api_handler: APIClient,
     transaction_filters: dict,
     transaction_handler: LLMClient,
     prompt_file: str,
@@ -110,7 +124,7 @@ def _process_single_email(
     e_mail = email_handler.get_email_by_uid(uid)
     if not e_mail:
         # still commit the uid to avoid reprocessing a failing message
-        api.set_last_seen_uid(folder, int(uid))
+        api_handler.set_last_seen_uid(folder, int(uid))
         return
 
     # Match email to a rule (sender + subject)
@@ -121,7 +135,7 @@ def _process_single_email(
     )
     if not matched_rule:
         logger.info('Skipping email UID %s - no matching rule', uid)
-        api.set_last_seen_uid(folder, int(uid))
+        api_handler.set_last_seen_uid(folder, int(uid))
         return
 
     account_numbers = matched_rule.get('account_numbers', [])
@@ -157,44 +171,46 @@ def _process_single_email(
             logger.warning(
                 'No account number found in prediction, skipping transaction'
             )
-            api.set_last_seen_uid(folder, int(uid))
+            api_handler.set_last_seen_uid(folder, int(uid))
             return
-        account_id = api.get_account_id(account_number)
+        account_id = api_handler.get_account_id(account_number)
         if account_id is None:
             logger.warning(
                 'No account ID found for account number %s, skipping transaction',
                 account_number,
             )
-            api.set_last_seen_uid(folder, int(uid))
+            api_handler.set_last_seen_uid(folder, int(uid))
             return
         email_date = e_mail.get('email_date')
         if email_date is None:
             logger.warning('No email date found, skipping transaction')
-            api.set_last_seen_uid(folder, int(uid))
+            api_handler.set_last_seen_uid(folder, int(uid))
             return
-        cycle_id = api.get_cycle_id_for_date(email_date)
+        cycle_id = api_handler.get_cycle_id_for_date(email_date)
         if cycle_id is None:
             logger.warning(
                 'No cycle ID found for date %s, skipping transaction',
                 email_date,
             )
-            api.set_last_seen_uid(folder, int(uid))
+            api_handler.set_last_seen_uid(folder, int(uid))
             return
+        email_id = get_email_id(api_handler, e_mail, folder)
         # in future, save the email to db and getch the email_id for the email. store the email_id along with transaction.
-        api.save_transaction(
-            e_mail=e_mail,
+        api_handler.save_transaction(
             load_by='agent',
+            transaction_date=email_date,
             llm_reasoning=llm_reasoning,
             llm_prediction=llm_prediction,
             account_id=account_id,
             cycle_id=cycle_id,
+            email_id=email_id,
         )
         logger.info('Transaction stored to DB')
     else:
         logger.info('Skipping non-transaction or invalid prediction')
 
     # Commit this UID so next iteration will start after it
-    api.set_last_seen_uid(folder, int(uid))
+    api_handler.set_last_seen_uid(folder, int(uid))
 
 
 def email_sync(

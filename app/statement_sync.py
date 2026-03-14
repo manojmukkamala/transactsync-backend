@@ -53,13 +53,18 @@ def get_transactions(
                     transaction_date,
                 )
 
-            transactions.append([llm_reasoning, prediction, account_id, cycle_id])
+            transactions.append(
+                [llm_reasoning, prediction, account_id, cycle_id, transaction_date]
+            )
 
     return transactions
 
 
 def post_transaction(
-    logger: logging.Logger, api_handler: APIClient, transaction: list[Any]
+    logger: logging.Logger,
+    api_handler: APIClient,
+    file_id: int | None,
+    transaction: list[Any],
 ) -> None:
     account_id = transaction[2]
     if account_id is None:
@@ -67,16 +72,66 @@ def post_transaction(
         raise ValueError(error_msg)
 
     api_handler.save_transaction(
-        e_mail=None,
         load_by='agent',
+        transaction_date=transaction[4],
         llm_reasoning=transaction[0],
         llm_prediction=transaction[1],
         account_id=account_id,
         cycle_id=transaction[3],
+        file_id=file_id,
     )
     logger.info('Transaction stored to DB')
 
     return
+
+
+def get_files_to_process(
+    logger: logging.Logger,
+    api_handler: APIClient,
+    statement_file: str | None,
+    statement_folder: str | None,
+) -> dict:
+
+    files_to_process: dict = {}
+
+    if statement_file is not None:
+        files_to_process[statement_file] = FSClient.get_file_created_date(
+            statement_file
+        )
+    elif statement_folder is not None:
+        file_system_client = FSClient(statement_folder)
+        file_list = file_system_client.get_files_by_created_date()
+
+        last_processed_file_ts = api_handler.get_latest_checkpoint(statement_folder)
+
+        for file, created_at in file_list.items():
+            created_at_ts = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')  # noqa: DTZ007
+
+            if (last_processed_file_ts is None) or (
+                created_at_ts
+                > datetime.strptime(  # noqa: DTZ007
+                    last_processed_file_ts, '%Y-%m-%d %H:%M:%S'
+                )
+            ):
+                files_to_process[str(file)] = created_at_ts
+    else:
+        logger.error('None of statement_file or statement_folder are provided')
+
+    return files_to_process
+
+
+def get_file_id(api_handler: APIClient, file_name: str, file_created_at: str) -> int:
+    try:
+        file_id = api_handler.get_file_id_by_name(file_name)
+        if file_id is None:
+            response = api_handler.set_file_id_by_name(file_name, file_created_at)
+            file_id = response['file_id']
+    except KeyError as kerr:
+        k = 'file_id'
+        raise KeyError(k) from kerr
+    except Exception:
+        raise
+    return file_id
 
 
 def statement_sync(
@@ -97,47 +152,35 @@ def statement_sync(
         with open(prompt_file) as f:
             prompt = f.read()
     except OSError:
-        prompt = ''
+        prompt = ''  # improve error handling
 
-    files_to_process: dict = {}
-
-    if statement_file is not None:
-        files_to_process[statement_file] = None
-    elif statement_folder is not None:
-        file_system_client = FSClient(statement_folder)
-        file_list = file_system_client.get_files_by_created_date()
-
-        last_processed_file_ts = api_handler.get_latest_checkpoint(statement_folder)
-
-        for file, created_at in file_list.items():
-            created_at_ts = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')  # noqa: DTZ007
-
-            if (last_processed_file_ts is None) or (
-                created_at_ts
-                > datetime.strptime(  # noqa: DTZ007
-                    last_processed_file_ts, '%Y-%m-%d %H:%M:%S'
-                )
-            ):
-                files_to_process[str(file)] = created_at_ts
-    else:
-        logger.error('None of statement_file or statement_folder are provided')
+    files_to_process = get_files_to_process(
+        logger, api_handler, statement_file, statement_folder
+    )
 
     if not files_to_process:
         logger.info('No files to process')
         return
 
     for file_name, create_ts in files_to_process.items():
+        ckpt = datetime.strftime(create_ts, '%Y-%m-%d %H:%M:%S')
+
         transactions = get_transactions(
             logger, api_handler, llm_handler, prompt, file_name
         )
 
         if transactions:
+            file_id = get_file_id(api_handler, file_name, ckpt)
             for transaction in transactions:
-                post_transaction(logger, api_handler, transaction)
+                post_transaction(logger, api_handler, file_id, transaction)
         else:
             logger.info('No transactions to process')
 
-        if statement_folder is not None:
-            ckpt = datetime.strftime(create_ts, '%Y-%m-%d %H:%M:%S')
+        if statement_file is not None:
+            api_handler.set_latest_checkpoint(statement_file, ckpt)
+            logger.info('Checkpoint saved')
+        elif statement_folder is not None:
             api_handler.set_latest_checkpoint(statement_folder, ckpt)
             logger.info('Checkpoint saved')
+        else:
+            logger.info('Skipping Checkpoint')
