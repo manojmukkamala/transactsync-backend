@@ -41,7 +41,7 @@ class APIClient:
 
     def set_latest_checkpoint(self, identifier: str, checkpoint: str) -> dict[str, Any]:
         r = self.s.put(
-            f'{self.base}/checkpoints/{identifier}', json={'checkpoint': checkpoint}
+            f'{self.base}/checkpoints/{identifier}', json={'load_by': 'transactsync-backend', 'checkpoint': checkpoint}
         )
         r.raise_for_status()
         return cast('dict[str, Any]', r.json())
