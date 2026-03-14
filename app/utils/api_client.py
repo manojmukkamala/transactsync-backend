@@ -46,24 +46,49 @@ class APIClient:
         r.raise_for_status()
         return cast('dict[str, Any]', r.json())
 
-    def get_account_ids_dict(self) -> dict[tuple, int]:
-        r = self.s.get(f'{self.base}/accounts')
+    def get_file_id_by_name(self, file_name: str) -> int | None:
+        r = self.s.get(f'{self.base}/files/path-name//{file_name}')
         if r.status_code == 200:
-            accounts = cast('dict[str, Any]', r.json())
-            result: dict[tuple, int] = {}
-            for a in accounts:
-                # accounts is a list of dictionaries, so we need to properly type it
-                account_dict = cast('dict[str, Any]', a)
-                key = (
-                    account_dict.get('financial_institution'),
-                    account_dict.get('account_number'),
-                )
-                if key[0] is not None and key[1] is not None:
-                    result[key] = account_dict.get(
-                        'account_id', 0
-                    )  # Default to 0 if not found
-            return result
-        return {}
+            response_json = cast('dict[str, Any]', r.json())
+            return response_json.get('file_id')
+        return None
+
+    def set_file_id_by_name(
+        self, file_name: str, file_created_at: str
+    ) -> dict[str, Any]:
+        payload = {
+            'load_by': 'transactsync-backend',
+            'file_name': file_name.rsplit('/', 1)[0],
+            'file_path': file_name.rsplit('/', 1)[1],
+            'file_created_at': file_created_at,
+        }
+        r = self.s.post(f'{self.base}/files', json=payload)
+        r.raise_for_status()
+        return cast('dict[str, Any]', r.json())
+
+    def get_email_id_by_email(self, email: dict[str, str], folder: str) -> int | None:
+        r = self.s.get(
+            f'{self.base}/emails/uid/{email["uid"]}?folder={folder}&from_address={email["from_address"]}&to_address={email["to_address"]}&email_date={email["email_date"]}'
+        )
+        if r.status_code == 200:
+            response_json = cast('dict[str, Any]', r.json())
+            return response_json.get('email_id')
+        return None
+
+    def set_email_id_by_email(
+        self, email: dict[str, str], folder: str
+    ) -> dict[str, Any]:
+        payload = {
+            'load_by': 'transactsync-backend',
+            'email_uid': email['uid'],
+            'folder': folder,
+            'from_address': email['from_address'],
+            'to_address': email['to_address'],
+            'email_date': email['email_date'],
+        }
+        r = self.s.post(f'{self.base}/emails', json=payload)
+        r.raise_for_status()
+        return cast('dict[str, Any]', r.json())
 
     def get_account_id(self, account_number: str) -> int | None:
         """Resolve account_id by account_number via API.
@@ -91,42 +116,30 @@ class APIClient:
 
     def save_transaction(
         self,
-        e_mail: dict[str, Any] | None,
         load_by: str,
+        transaction_date: str,
         llm_reasoning: str,
         llm_prediction: dict[str, Any],
         account_id: int,
         cycle_id: int | None = None,
+        email_id: int | None = None,
+        file_id: int | None = None,
     ) -> dict[str, Any]:
-        if e_mail is not None:
-            email_uid = e_mail.get('uid')
-            email_date = e_mail.get('email_date')
-            from_address = e_mail.get('from_address')
-            to_address = e_mail.get('to_address')
-            transaction_date = e_mail.get('email_date')
-        else:
-            email_uid = None
-            email_date = None
-            from_address = None
-            to_address = None
-            transaction_date = llm_prediction.get('transaction_date')
 
         payload = {
             'load_by': load_by,
             'transaction_date': transaction_date,
+            'transaction_type': llm_prediction.get('transaction_type'),
             'transaction_amount': llm_prediction.get('transaction_amount'),
             'merchant': llm_prediction.get('merchant'),
             'account_id': account_id,
-            'from_address': from_address,
-            'to_address': to_address,
-            'email_uid': email_uid,
-            'email_date': email_date,
-            'transaction_type': llm_prediction.get('transaction_type'),
+            'cycle_id': cycle_id,
+            'email_id': email_id,
+            'file_id': file_id,
             'llm_reasoning': llm_reasoning,
             'comment': llm_prediction.get('comment'),
-            'cycle_id': cycle_id,
-            'is_deleted': False,
             'is_budgeted': False,
+            'is_deleted': False,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         r = self.s.post(f'{self.base}/transactions', json=payload)

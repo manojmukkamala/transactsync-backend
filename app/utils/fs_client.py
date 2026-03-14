@@ -19,3 +19,10 @@ class FSClient:
         sorted_files = dict(sorted(files.items(), key=lambda item: item[1]))
 
         return sorted_files
+
+    @staticmethod
+    def get_file_created_date(file: str) -> str:
+        file_path = Path(file)
+        return datetime.fromtimestamp(file_path.stat().st_ctime).strftime(  # noqa: DTZ006
+            '%Y-%m-%d %H:%M:%S'
+        )
