@@ -58,8 +58,8 @@ class APIClient:
     ) -> dict[str, Any]:
         payload = {
             'load_by': 'transactsync-backend',
-            'file_name': file_name.rsplit('/', 1)[0],
-            'file_path': file_name.rsplit('/', 1)[1],
+            'file_name': file_name.rsplit('/', 1)[1],
+            'file_path': file_name.rsplit('/', 1)[0],
             'file_created_at': file_created_at,
         }
         r = self.s.post(f'{self.base}/files', json=payload)
