@@ -41,7 +41,7 @@ class APIClient:
 
     def set_latest_checkpoint(self, identifier: str, checkpoint: str) -> dict[str, Any]:
         r = self.s.put(
-            f'{self.base}/checkpoints/{identifier}', json={'checkpoint': checkpoint}
+            f'{self.base}/checkpoints/{identifier}', json={'load_by': 'transactsync-backend', 'checkpoint': checkpoint}
         )
         r.raise_for_status()
         return cast('dict[str, Any]', r.json())
@@ -58,8 +58,8 @@ class APIClient:
     ) -> dict[str, Any]:
         payload = {
             'load_by': 'transactsync-backend',
-            'file_name': file_name.rsplit('/', 1)[0],
-            'file_path': file_name.rsplit('/', 1)[1],
+            'file_name': file_name.rsplit('/', 1)[1],
+            'file_path': file_name.rsplit('/', 1)[0],
             'file_created_at': file_created_at,
         }
         r = self.s.post(f'{self.base}/files', json=payload)
