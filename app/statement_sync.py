@@ -101,6 +101,7 @@ def get_files_to_process(
     elif statement_folder is not None:
         file_system_client = FSClient(statement_folder)
         file_list = file_system_client.get_files_by_created_date()
+        logger.info(file_list)
 
         last_processed_file_ts = api_handler.get_latest_checkpoint(statement_folder)
 
