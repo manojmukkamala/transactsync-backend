@@ -54,6 +54,7 @@ def _initialize_components(
     model: str,
     api_host: str,
     api_headers: dict[str, str] | None = None,
+    model_api_key: str | None = None,
 ) -> tuple[APIClient, EmailClient, LLMClient]:
     """Initialize the API client, email handler, and LLM handler."""
 
@@ -65,7 +66,12 @@ def _initialize_components(
         logger, email_host, email_port, username, password, folder
     )
 
-    llm_handler = LLMClient(logger=logger, model_host=model_host, model=model)
+    llm_handler = LLMClient(
+        logger=logger,
+        model_host=model_host,
+        model=model,
+        api_key=model_api_key,
+    )
 
     return api_handler, email_handler, llm_handler
 
@@ -227,6 +233,7 @@ def email_sync(
     api_headers: dict[str, str] | None,
     transaction_rules: str,
     prompt_file: str,
+    model_api_key: str | None = None,
 ) -> None:
     """
     Main synchronization routine for fetching emails, extracting transactions, and storing them in the database.
@@ -244,8 +251,9 @@ def email_sync(
         folder (str): Email folder to fetch from.
         transaction_rules (str): Path to transaction rules YAML file.
         prompt_file (str): Path to prompt template file.
-        model_host (str, optional): LLM model host URL. Default: "http://localhost:11434".
+        model_host (str, optional): Base URL of an OpenAI-compatible LLM server (e.g. Ollama at "http://localhost:11434/v1"). Default: "http://localhost:11434/v1".
         model (str, optional): LLM model name. Default: "qwen3:8b".
+        model_api_key (str, optional): API key for the LLM server. Defaults to the MODEL_API_KEY env var, or a dummy key for local servers.
     """
 
     # Load rules (new spec)
@@ -263,6 +271,7 @@ def email_sync(
         model,
         api_host,
         api_headers,
+        model_api_key,
     )
 
     # Process emails one-by-one: fetch UID list, then fetch and process each UID sequentially committing the UID after each
@@ -321,8 +330,14 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--model_host',
-        help='Model Host (default: http://localhost:11434)',
-        default=os.environ.get('MODEL_HOST', 'http://localhost:11434'),
+        help='LLM server base URL, OpenAI-compatible (default: http://localhost:11434/v1)',
+        default=os.environ.get('MODEL_HOST', 'http://localhost:11434/v1'),
+        required=False,
+    )
+    parser.add_argument(
+        '--model_api_key',
+        help='LLM server API key (default: MODEL_API_KEY env var)',
+        default=os.environ.get('MODEL_API_KEY'),
         required=False,
     )
     parser.add_argument(
@@ -387,4 +402,5 @@ if __name__ == '__main__':
         api_headers,
         args.transaction_rules,
         args.prompt_file,
+        args.model_api_key,
     )
