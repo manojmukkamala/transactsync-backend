@@ -1,4 +1,4 @@
-FROM python:3.12.9-slim
+FROM python:3.13-slim
 
 # Install system dependencies and uv
 RUN apt-get update && \
@@ -20,4 +20,8 @@ COPY app/ ./app/
 COPY main.py ./main.py
 
 # Set entrypoint (use exec form for proper signal handling)
-CMD ["uv", "run", "/workspace/main.py", "--source", "email"]
+# Use the system interpreter directly: dependencies are already installed
+# system-wide above, and `uv run` would otherwise recreate a project venv
+# (downloading an interpreter + all deps) on every container start.
+ENTRYPOINT ["python", "/workspace/main.py"]
+CMD ["--source", "email"]
