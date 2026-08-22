@@ -1,6 +1,6 @@
 # TransactSync Backend
 
-Backend agents that extract financial transactions and store them in the TransactSync API:
+Backend agents that extract financial transactions and store them in the [TransactSync API](https://github.com/manojmukkamala/transactsync-api):
 
 - **Email sync** — fetches new emails over IMAP, matches them against sender/subject rules, uses an LLM to extract transaction data, and saves it. Progress (last seen UID per folder) is tracked in the API.
 - **Statement sync** — reads bank statement files, converts them to markdown, uses an LLM to extract transactions, and saves them. Progress (checkpoint per folder/file) is tracked in the API.
