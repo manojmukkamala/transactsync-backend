@@ -82,6 +82,7 @@ def _process_email_loop(
     """Process emails one-by-one: fetch UID list, then fetch and process each UID sequentially."""
     while True:
         last_seen_uid = api_handler.get_last_seen_uid(folder)
+        logger.info('Last seen UID: %s', last_seen_uid)
         # ensure IMAP connection exists for UID retrieval
         email_handler.imap_bridge()
         uids = email_handler.get_email_uids(
