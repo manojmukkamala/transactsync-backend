@@ -144,10 +144,13 @@ def statement_sync(
     api_host: str,
     api_headers: dict[str, str] | None,
     prompt_file: str,
+    model_api_key: str | None = None,
 ) -> None:
 
     api_handler = APIClient(logger, api_host, headers=api_headers)
-    llm_handler = LLMClient(logger=logger, model_host=model_host, model=model)
+    llm_handler = LLMClient(
+        logger=logger, model_host=model_host, model=model, api_key=model_api_key
+    )
 
     try:
         with open(prompt_file) as f:
