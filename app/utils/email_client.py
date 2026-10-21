@@ -85,8 +85,12 @@ class EmailClient:
             if status != 'OK':
                 _raise_search_error()
 
+            # Some servers (e.g. iCloud) omit the untagged SEARCH response
+            # when the result set is empty, which imaplib reports as [None].
+            raw_uids = messages[0] if messages and messages[0] is not None else b''
+
             # Ensure we return a list of strings
-            uids = messages[0].split()
+            uids = raw_uids.split()
             return [
                 uid.decode('utf-8') if isinstance(uid, bytes) else uid for uid in uids
             ]
