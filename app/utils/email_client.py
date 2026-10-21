@@ -32,9 +32,14 @@ class EmailClient:
             imaplib.IMAP4: An instance of the IMAP4 class representing the connection to the email account.
         """
         try:
-            # Connect to the IMAP server
+            # Connect to the IMAP server. Port 993 is the standard
+            # implicit-TLS (IMAPS) port; other ports (e.g. a local bridge
+            # on 143) use a plain connection.
             self.logger.info('Connecting to email host: %s:%s', self.host, self.port)
-            self.imapb = imaplib.IMAP4(self.host, self.port)
+            if self.port == 993:
+                self.imapb = imaplib.IMAP4_SSL(self.host, self.port)
+            else:
+                self.imapb = imaplib.IMAP4(self.host, self.port)
             # Login to the account
             self.imapb.login(self.username, self.password)
         except Exception as e:
